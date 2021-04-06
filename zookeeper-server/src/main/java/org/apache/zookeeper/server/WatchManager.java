@@ -18,18 +18,18 @@
 
 package org.apache.zookeeper.server;
 
-import java.io.PrintWriter;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Map.Entry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * This class manages watches. It allows watches to be associated with a string
@@ -53,6 +53,7 @@ public class WatchManager {
     }
 
     public synchronized void addWatch(String path, Watcher watcher) {
+        // path -> watcher
         HashSet<Watcher> list = watchTable.get(path);
         if (list == null) {
             // don't waste memory if there are few watches on a node
@@ -63,6 +64,7 @@ public class WatchManager {
         }
         list.add(watcher);
 
+        // warcher -> path
         HashSet<String> paths = watch2Paths.get(watcher);
         if (paths == null) {
             // cnxns typically have many watches, so use default cap here
@@ -93,10 +95,12 @@ public class WatchManager {
     }
 
     public Set<Watcher> triggerWatch(String path, EventType type, Set<Watcher> supress) {
+        // 包含事件类型、会话状态、节点路径信息
         WatchedEvent e = new WatchedEvent(type,
                 KeeperState.SyncConnected, path);
         HashSet<Watcher> watchers;
         synchronized (this) {
+            // 直接使用remove，所以一个watcher使用一次后就无效了
             watchers = watchTable.remove(path);
             if (watchers == null || watchers.isEmpty()) {
                 if (LOG.isTraceEnabled()) {
@@ -114,9 +118,11 @@ public class WatchManager {
             }
         }
         for (Watcher w : watchers) {
+            // 过滤
             if (supress != null && supress.contains(w)) {
                 continue;
             }
+            // 调用process方法
             w.process(e);
         }
         return watchers;

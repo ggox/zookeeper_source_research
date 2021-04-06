@@ -138,6 +138,7 @@ public class ZooKeeper {
         private final Map<String, Set<Watcher>> childWatches =
             new HashMap<String, Set<Watcher>>();
 
+        // 保存watcher的地方
         private volatile Watcher defaultWatcher;
 
         final private void addTo(Set<Watcher> from, Set<Watcher> to) {
@@ -156,7 +157,7 @@ public class ZooKeeper {
                                         String clientPath)
         {
             Set<Watcher> result = new HashSet<Watcher>();
-
+            // 根据事件类型分别处理
             switch (type) {
             case None:
                 result.add(defaultWatcher);
@@ -194,6 +195,7 @@ public class ZooKeeper {
             case NodeDataChanged:
             case NodeCreated:
                 synchronized (dataWatches) {
+                    // 使用remove方法，说明watcher是一次性的
                     addTo(dataWatches.remove(clientPath), result);
                 }
                 synchronized (existWatches) {
@@ -442,6 +444,8 @@ public class ZooKeeper {
         LOG.info("Initiating client connection, connectString=" + connectString
                 + " sessionTimeout=" + sessionTimeout + " watcher=" + watcher);
 
+        // 将watcher赋值给watchManager.defaultWatcher
+        // 除了构造函数中传递Watcher，还可以使用 getData exists getChildren 这三个api设置watcher，会保存在watchManager的三个Map中
         watchManager.defaultWatcher = watcher;
 
         ConnectStringParser connectStringParser = new ConnectStringParser(
@@ -1200,27 +1204,36 @@ public class ZooKeeper {
         throws KeeperException, InterruptedException
      {
         final String clientPath = path;
+         // 校验path
         PathUtils.validatePath(clientPath);
 
         // the watch contains the un-chroot path
         WatchRegistration wcb = null;
         if (watcher != null) {
+            // 会在finishPacket方法中调用WatchRegistration#register方法进行保存watcher
             wcb = new DataWatchRegistration(watcher, clientPath);
         }
 
+         // 补全chrootPath
         final String serverPath = prependChroot(clientPath);
 
+        // 请求头
         RequestHeader h = new RequestHeader();
+        // 操作码
         h.setType(ZooDefs.OpCode.getData);
+        // 具体请求
         GetDataRequest request = new GetDataRequest();
         request.setPath(serverPath);
         request.setWatch(watcher != null);
         GetDataResponse response = new GetDataResponse();
+        // 同步发送请求
         ReplyHeader r = cnxn.submitRequest(h, request, response, wcb);
+        // 返回码不为0，抛出异常
         if (r.getErr() != 0) {
             throw KeeperException.create(KeeperException.Code.get(r.getErr()),
                     clientPath);
         }
+        // 更新stat信息
         if (stat != null) {
             DataTree.copyStat(response.getStat(), stat);
         }
@@ -1252,6 +1265,7 @@ public class ZooKeeper {
 
     /**
      * The asynchronous version of getData.
+     * 异步的getData
      *
      * @see #getData(String, Watcher, Stat)
      */
@@ -1259,22 +1273,29 @@ public class ZooKeeper {
             DataCallback cb, Object ctx)
     {
         final String clientPath = path;
+        // 校验path
         PathUtils.validatePath(clientPath);
 
         // the watch contains the un-chroot path
         WatchRegistration wcb = null;
         if (watcher != null) {
+            // 会在finishPacket方法中调用WatchRegistration#register方法进行保存watcher
             wcb = new DataWatchRegistration(watcher, clientPath);
         }
 
+        // 补全chrootPath
         final String serverPath = prependChroot(clientPath);
 
+        // 请求头
         RequestHeader h = new RequestHeader();
+        // 操作码
         h.setType(ZooDefs.OpCode.getData);
+        // 请求体
         GetDataRequest request = new GetDataRequest();
         request.setPath(serverPath);
         request.setWatch(watcher != null);
         GetDataResponse response = new GetDataResponse();
+        // 请求数据入队
         cnxn.queuePacket(h, new ReplyHeader(), request, response, cb,
                 clientPath, serverPath, ctx, wcb);
     }

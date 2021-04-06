@@ -23,16 +23,27 @@ import org.apache.jute.*;
 import org.apache.yetus.audience.InterfaceAudience;
 @InterfaceAudience.Public
 public class Stat implements Record {
+  // 创建时的事物id
   private long czxid;
+  // 最后一次更新时的事物id
   private long mzxid;
+  // 创建时间
   private long ctime;
+  // 最近一次更新时间
   private long mtime;
+  // 数据节点版本你好
   private int version;
+  // 子节点版本号
   private int cversion;
+  // acl版本号
   private int aversion;
+  // 临时节点的会话sessionID,如果是持久节点，该属性值为0
   private long ephemeralOwner;
+  // 数据内容长度
   private int dataLength;
+  // 子节点个数
   private int numChildren;
+  // 子节点列表最后一次被修改时的事物id
   private long pzxid;
   public Stat() {
   }
